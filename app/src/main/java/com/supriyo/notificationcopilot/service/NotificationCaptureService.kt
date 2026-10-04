@@ -6,8 +6,20 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
 import com.supriyo.notificationcopilot.data.CapturedNotification
+import com.supriyo.notificationcopilot.data.AppDatabase
+import com.supriyo.notificationcopilot.data.NotificationEntity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 class NotificationCaptureService : NotificationListenerService() {
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val notificationDao by lazy {
+        AppDatabase.getInstance(applicationContext).notificationDao()
+    }
+
     override fun onListenerConnected() {
         super.onListenerConnected()
         Log.d(TAG, "Notification listener connected")
@@ -23,7 +35,12 @@ class NotificationCaptureService : NotificationListenerService() {
         val isOngoing = notification.flags and Notification.FLAG_ONGOING_EVENT != 0
         val isGroupSummary = notification.flags and Notification.FLAG_GROUP_SUMMARY != 0
 
-        if (isOngoing || isGroupSummary || sbn.packageName == packageName) {
+        if (
+            isOngoing ||
+            isGroupSummary ||
+            sbn.packageName == packageName ||
+            sbn.packageName in EXCLUDED_PACKAGES
+        ) {
             return
         }
 
@@ -39,6 +56,20 @@ class NotificationCaptureService : NotificationListenerService() {
             isGroupSummary = isGroupSummary
         )
 
+        serviceScope.launch {
+            notificationDao.insert(
+                NotificationEntity(
+                    key = capturedNotification.key,
+                    packageName = capturedNotification.packageName,
+                    title = capturedNotification.title,
+                    text = capturedNotification.text,
+                    bigText = capturedNotification.bigText,
+                    postTime = capturedNotification.postTime,
+                    capturedAt = System.currentTimeMillis()
+                )
+            )
+        }
+
         val isDebuggable = applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
         if (isDebuggable) {
             Log.d(TAG, "Captured notification: $capturedNotification")
@@ -51,7 +82,15 @@ class NotificationCaptureService : NotificationListenerService() {
         }
     }
 
+    override fun onDestroy() {
+        serviceScope.cancel()
+        super.onDestroy()
+    }
+
     private companion object {
         const val TAG = "NotifCapture"
+
+        // Add sensitive or unwanted notification package names here later.
+        val EXCLUDED_PACKAGES = emptySet<String>()
     }
 }
