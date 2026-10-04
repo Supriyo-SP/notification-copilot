@@ -5,7 +5,6 @@ Project: personal Android app "Notification Copilot". Read SPEC.md for the full 
 - Language/stack: Kotlin, Jetpack Compose (Material 3), Room with KSP, Coroutines/Flow.
 - Min SDK 26. Prefer current, non-deprecated Android APIs.
 - Keep it simple: ViewModel + Repository, no Hilt, no extra architecture layers.
-- Do NOT add dependencies or change Gradle files without asking.
 - Put business logic (classification, extraction) in `domain/` as pure Kotlin
   functions with no Android imports.
 - Never add network calls, analytics, or logging of full notification content.
