@@ -75,19 +75,22 @@ private fun NotificationAccessScreen(
         modifier = modifier.fillMaxSize().padding(24.dp)
     ) {
         Text(text = "Notification Copilot")
-        Text(
-            text = if (notificationAccessGranted) {
-                "Notification access: granted"
-            } else {
-                "Notification access: not granted"
-            },
-            modifier = Modifier.padding(top = 16.dp)
-        )
-        Button(
-            onClick = onOpenSettings,
-            modifier = Modifier.padding(top = 16.dp)
-        ) {
-            Text("Open notification access settings")
+        if (notificationAccessGranted) {
+            Text(
+                text = "Listening to notifications",
+                modifier = Modifier.padding(top = 16.dp)
+            )
+        } else {
+            Text(
+                text = "Notification access is off, the app can't see your notifications",
+                modifier = Modifier.padding(top = 16.dp)
+            )
+            Button(
+                onClick = onOpenSettings,
+                modifier = Modifier.padding(top = 16.dp)
+            ) {
+                Text("Grant access")
+            }
         }
         HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
         LazyColumn(
