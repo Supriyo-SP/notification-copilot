@@ -1,12 +1,14 @@
 package com.supriyo.notificationcopilot.service
 
 import android.app.Notification
+import android.content.ComponentName
 import android.content.pm.ApplicationInfo
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
 import com.supriyo.notificationcopilot.data.CapturedNotification
 import com.supriyo.notificationcopilot.data.AppDatabase
+import com.supriyo.notificationcopilot.data.ListenerEventEntity
 import com.supriyo.notificationcopilot.data.NotificationEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -19,14 +21,36 @@ class NotificationCaptureService : NotificationListenerService() {
     private val notificationDao by lazy {
         AppDatabase.getInstance(applicationContext).notificationDao()
     }
+    private val listenerEventDao by lazy {
+        AppDatabase.getInstance(applicationContext).listenerEventDao()
+    }
 
     override fun onListenerConnected() {
         super.onListenerConnected()
+        serviceScope.launch {
+            listenerEventDao.insert(
+                ListenerEventEntity(
+                    type = CONNECTED,
+                    timestamp = System.currentTimeMillis()
+                )
+            )
+        }
         Log.d(TAG, "Notification listener connected")
     }
 
     override fun onListenerDisconnected() {
         super.onListenerDisconnected()
+        serviceScope.launch {
+            listenerEventDao.insert(
+                ListenerEventEntity(
+                    type = DISCONNECTED,
+                    timestamp = System.currentTimeMillis()
+                )
+            )
+            requestRebind(
+                ComponentName(applicationContext, NotificationCaptureService::class.java)
+            )
+        }
         Log.d(TAG, "Notification listener disconnected")
     }
 
@@ -89,8 +113,10 @@ class NotificationCaptureService : NotificationListenerService() {
 
     private companion object {
         const val TAG = "NotifCapture"
+        const val CONNECTED = "CONNECTED"
+        const val DISCONNECTED = "DISCONNECTED"
 
         // Add sensitive or unwanted notification package names here later.
-        val EXCLUDED_PACKAGES = emptySet<String>()
+        val EXCLUDED_PACKAGES = setOf("com.android.systemui")
     }
 }

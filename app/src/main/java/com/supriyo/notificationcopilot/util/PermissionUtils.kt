@@ -14,4 +14,8 @@ object PermissionUtils {
     fun openNotificationAccessSettings(context: Context) {
         context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
     }
+
+    fun openBatterySettings(context: Context) {
+        context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+    }
 }

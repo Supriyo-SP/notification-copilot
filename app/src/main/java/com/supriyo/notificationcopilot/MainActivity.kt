@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.supriyo.notificationcopilot.data.NotificationEntity
+import com.supriyo.notificationcopilot.data.ListenerEventEntity
 import com.supriyo.notificationcopilot.ui.InboxViewModel
 import com.supriyo.notificationcopilot.ui.theme.NotificationCopilotTheme
 import com.supriyo.notificationcopilot.util.PermissionUtils
@@ -46,8 +47,12 @@ class MainActivity : ComponentActivity() {
                     NotificationAccessScreen(
                         notificationAccessGranted = notificationAccessGranted,
                         notifications = inboxViewModel.notifications,
+                        listenerEvents = inboxViewModel.listenerEvents,
                         onOpenSettings = {
                             PermissionUtils.openNotificationAccessSettings(this)
+                        },
+                        onOpenBatterySettings = {
+                            PermissionUtils.openBatterySettings(this)
                         },
                         modifier = Modifier.padding(innerPadding)
                     )
@@ -66,10 +71,13 @@ class MainActivity : ComponentActivity() {
 private fun NotificationAccessScreen(
     notificationAccessGranted: Boolean,
     notifications: StateFlow<List<NotificationEntity>>,
+    listenerEvents: StateFlow<List<ListenerEventEntity>>,
     onOpenSettings: () -> Unit,
+    onOpenBatterySettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val notificationList by notifications.collectAsStateWithLifecycle()
+    val eventList by listenerEvents.collectAsStateWithLifecycle()
 
     Column(
         modifier = modifier.fillMaxSize().padding(24.dp)
@@ -91,6 +99,23 @@ private fun NotificationAccessScreen(
             ) {
                 Text("Grant access")
             }
+        }
+        Button(
+            onClick = onOpenBatterySettings,
+            modifier = Modifier.padding(top = 8.dp)
+        ) {
+            Text("Battery settings")
+        }
+        Text(
+            text = "Listener events",
+            modifier = Modifier.padding(top = 16.dp)
+        )
+        eventList.take(5).forEach { event ->
+            Text(
+                text = "${event.type.lowercase().replaceFirstChar(Char::uppercase)} - " +
+                    DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(event.timestamp)),
+                modifier = Modifier.padding(top = 4.dp)
+            )
         }
         HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
         LazyColumn(
@@ -128,7 +153,9 @@ private fun NotificationAccessScreenPreview() {
         NotificationAccessScreen(
             notificationAccessGranted = false,
             notifications = kotlinx.coroutines.flow.MutableStateFlow<List<NotificationEntity>>(emptyList()),
-            onOpenSettings = {}
+            listenerEvents = kotlinx.coroutines.flow.MutableStateFlow<List<ListenerEventEntity>>(emptyList()),
+            onOpenSettings = {},
+            onOpenBatterySettings = {}
         )
     }
 }
