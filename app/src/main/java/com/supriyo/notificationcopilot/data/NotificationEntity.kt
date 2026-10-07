@@ -2,6 +2,7 @@ package com.supriyo.notificationcopilot.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import androidx.room3.PrimaryKey
 
 @Entity(tableName = "notifications")
 data class NotificationEntity(
@@ -13,5 +14,8 @@ data class NotificationEntity(
     val text: String?,
     val bigText: String?,
     val postTime: Long,
-    val capturedAt: Long
+    val capturedAt: Long,
+    val category: String = "OTHER",
+    val subcategory: String = "NONE",
+    val important: Boolean = false
 )

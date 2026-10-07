@@ -5,15 +5,19 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -78,6 +82,14 @@ private fun NotificationAccessScreen(
 ) {
     val notificationList by notifications.collectAsStateWithLifecycle()
     val eventList by listenerEvents.collectAsStateWithLifecycle()
+    var selectedFilter by remember { mutableStateOf(NotificationFilter.ALL) }
+    val filteredNotifications = notificationList.filter { notification ->
+        when (selectedFilter) {
+            NotificationFilter.ALL -> notification.category != "SYSTEM"
+            NotificationFilter.IMPORTANT -> notification.important
+            else -> notification.category == selectedFilter.categoryName
+        }
+    }
 
     Column(
         modifier = modifier.fillMaxSize().padding(24.dp)
@@ -118,11 +130,27 @@ private fun NotificationAccessScreen(
             )
         }
         HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+        ) {
+            androidx.compose.foundation.layout.Row {
+                NotificationFilter.entries.forEach { filter ->
+                    FilterChip(
+                        selected = selectedFilter == filter,
+                        onClick = { selectedFilter = filter },
+                        label = { Text(filter.label) },
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                }
+            }
+        }
         LazyColumn(
             modifier = Modifier.fillMaxWidth().weight(1f)
         ) {
             items(
-                items = notificationList,
+                items = filteredNotifications,
                 key = { notification -> notification.id }
             ) { notification ->
                 NotificationRow(notification)
@@ -136,6 +164,16 @@ private fun NotificationRow(notification: NotificationEntity) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)
     ) {
+        Text(
+            text = buildString {
+                append(notification.category)
+                if (notification.subcategory != "NONE") {
+                    append(" / ")
+                    append(notification.subcategory)
+                }
+                if (notification.important) append("  *")
+            }
+        )
         Text(text = notification.packageName)
         Text(text = notification.title ?: "(no title)")
         Text(text = notification.text ?: "(no text)")
@@ -144,6 +182,22 @@ private fun NotificationRow(notification: NotificationEntity) {
             modifier = Modifier.padding(top = 4.dp)
         )
     }
+
+}
+
+private enum class NotificationFilter(
+    val label: String,
+    val categoryName: String? = null
+) {
+    ALL("All"),
+    IMPORTANT("Important"),
+    MAIL("Mail", "MAIL"),
+    FINANCIAL("Financial", "FINANCIAL"),
+    SOCIAL("Social", "SOCIAL"),
+    ORDERS("Orders", "ORDERS"),
+    PROMO("Promo", "PROMO"),
+    OTHER("Other", "OTHER"),
+    SYSTEM("System", "SYSTEM")
 }
 
 @Preview(showBackground = true)

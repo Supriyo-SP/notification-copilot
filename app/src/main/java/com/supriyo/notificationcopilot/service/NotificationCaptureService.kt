@@ -10,6 +10,7 @@ import com.supriyo.notificationcopilot.data.CapturedNotification
 import com.supriyo.notificationcopilot.data.AppDatabase
 import com.supriyo.notificationcopilot.data.ListenerEventEntity
 import com.supriyo.notificationcopilot.data.NotificationEntity
+import com.supriyo.notificationcopilot.domain.classify
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -79,6 +80,11 @@ class NotificationCaptureService : NotificationListenerService() {
             isOngoing = isOngoing,
             isGroupSummary = isGroupSummary
         )
+        val classification = classify(
+            packageName = capturedNotification.packageName,
+            title = capturedNotification.title,
+            text = capturedNotification.text
+        )
 
         serviceScope.launch {
             notificationDao.insert(
@@ -89,7 +95,10 @@ class NotificationCaptureService : NotificationListenerService() {
                     text = capturedNotification.text,
                     bigText = capturedNotification.bigText,
                     postTime = capturedNotification.postTime,
-                    capturedAt = System.currentTimeMillis()
+                    capturedAt = System.currentTimeMillis(),
+                    category = classification.category.name,
+                    subcategory = classification.subcategory.name,
+                    important = classification.important
                 )
             )
         }
