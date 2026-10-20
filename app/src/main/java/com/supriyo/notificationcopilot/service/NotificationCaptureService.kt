@@ -59,13 +59,21 @@ class NotificationCaptureService : NotificationListenerService() {
         val notification = sbn.notification
         val isOngoing = notification.flags and Notification.FLAG_ONGOING_EVENT != 0
         val isGroupSummary = notification.flags and Notification.FLAG_GROUP_SUMMARY != 0
+        val isMediaNotification =
+            notification.category in MEDIA_CATEGORIES ||
+                notification.extras.containsKey(Notification.EXTRA_MEDIA_SESSION) ||
+                sbn.packageName in MEDIA_PACKAGES
 
         if (
             isOngoing ||
             isGroupSummary ||
             sbn.packageName == packageName ||
-            sbn.packageName in EXCLUDED_PACKAGES
+            sbn.packageName in EXCLUDED_PACKAGES ||
+            isMediaNotification
         ) {
+            if (isMediaNotification && isDebuggable) {
+                Log.d(TAG, "skipped media: ${sbn.packageName}")
+            }
             return
         }
 
@@ -103,7 +111,6 @@ class NotificationCaptureService : NotificationListenerService() {
             )
         }
 
-        val isDebuggable = applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
         if (isDebuggable) {
             Log.d(TAG, "Captured notification: $capturedNotification")
         } else {
@@ -127,5 +134,19 @@ class NotificationCaptureService : NotificationListenerService() {
 
         // Add sensitive or unwanted notification package names here later.
         val EXCLUDED_PACKAGES = setOf("com.android.systemui")
+        val MEDIA_CATEGORIES = setOf(
+            Notification.CATEGORY_TRANSPORT,
+            Notification.CATEGORY_PROGRESS,
+            Notification.CATEGORY_SERVICE,
+            Notification.CATEGORY_NAVIGATION
+        )
+        val MEDIA_PACKAGES = setOf(
+            "com.google.android.apps.youtube.music",
+            "com.spotify.music",
+            "com.jio.media.jiosaavn"
+        )
     }
+
+    private val isDebuggable: Boolean
+        get() = applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
 }

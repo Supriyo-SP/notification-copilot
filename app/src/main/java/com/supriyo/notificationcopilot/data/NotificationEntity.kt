@@ -2,7 +2,6 @@ package com.supriyo.notificationcopilot.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import androidx.room3.PrimaryKey
 
 @Entity(tableName = "notifications")
 data class NotificationEntity(
