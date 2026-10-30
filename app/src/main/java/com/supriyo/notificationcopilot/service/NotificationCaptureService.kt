@@ -59,13 +59,32 @@ class NotificationCaptureService : NotificationListenerService() {
         val notification = sbn.notification
         val isOngoing = notification.flags and Notification.FLAG_ONGOING_EVENT != 0
         val isGroupSummary = notification.flags and Notification.FLAG_GROUP_SUMMARY != 0
+        val isMediaNotification =
+            notification.category in MEDIA_CATEGORIES ||
+                notification.extras.containsKey(Notification.EXTRA_MEDIA_SESSION) ||
+                sbn.packageName in MEDIA_PACKAGES
+        val isNeverSaveNotification =
+            NEVER_SAVE_PHRASES.any { phrase ->
+                notification.extras.getCharSequence(Notification.EXTRA_TITLE)
+                    ?.contains(phrase, ignoreCase = true) == true ||
+                    notification.extras.getCharSequence(Notification.EXTRA_TEXT)
+                        ?.contains(phrase, ignoreCase = true) == true
+            } ||
+                sbn.packageName in NEVER_SAVE_PACKAGES ||
+                (sbn.packageName == WHATSAPP_PACKAGE &&
+                    isWhatsAppMediaOnly(notification.extras.getCharSequence(Notification.EXTRA_TEXT)))
 
         if (
             isOngoing ||
             isGroupSummary ||
             sbn.packageName == packageName ||
-            sbn.packageName in EXCLUDED_PACKAGES
+            sbn.packageName in EXCLUDED_PACKAGES ||
+            isMediaNotification ||
+            isNeverSaveNotification
         ) {
+            if ((isMediaNotification || isNeverSaveNotification) && isDebuggable) {
+                Log.d(TAG, "skipped media: ${sbn.packageName}")
+            }
             return
         }
 
@@ -103,7 +122,6 @@ class NotificationCaptureService : NotificationListenerService() {
             )
         }
 
-        val isDebuggable = applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
         if (isDebuggable) {
             Log.d(TAG, "Captured notification: $capturedNotification")
         } else {
@@ -127,5 +145,43 @@ class NotificationCaptureService : NotificationListenerService() {
 
         // Add sensitive or unwanted notification package names here later.
         val EXCLUDED_PACKAGES = setOf("com.android.systemui")
+        val MEDIA_CATEGORIES = setOf(
+            Notification.CATEGORY_TRANSPORT,
+            Notification.CATEGORY_PROGRESS,
+            Notification.CATEGORY_SERVICE,
+            Notification.CATEGORY_NAVIGATION
+        )
+        val MEDIA_PACKAGES = setOf(
+            "com.google.android.apps.youtube.music",
+            "com.spotify.music",
+            "com.jio.media.jiosaavn"
+        )
+        val NEVER_SAVE_PACKAGES = setOf(
+            "com.google.android.deskclock",
+            "com.google.android.googlequicksearchbox",
+            "com.android.vending",
+            "com.android.systemui",
+            "com.google.android.gms"
+        )
+        val NEVER_SAVE_PHRASES = listOf(
+            "Checking for new messages",
+            "Syncing new emails",
+            "Sensitive notification content hidden",
+            "Hotspot turned off",
+            "Backup incomplete"
+        )
+        const val WHATSAPP_PACKAGE = "com.whatsapp"
+    }
+
+    private val isDebuggable: Boolean
+        get() = applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
+
+    private fun isWhatsAppMediaOnly(text: CharSequence?): Boolean {
+        val normalized = text?.toString()?.trim()
+            ?.replaceFirst(Regex("""^[^\p{L}\p{N}]+"""), "")
+            ?.lowercase()
+            ?: return false
+        return normalized.matches(Regex("""sent (?:a )?(?:photo|photos|sticker|video)""")) ||
+            normalized.matches(Regex("""voice message(?: \([^)]*\))?"""))
     }
 }
